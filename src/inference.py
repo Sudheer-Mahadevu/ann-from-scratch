@@ -19,6 +19,26 @@ def parse_arguments():
     """
     parser = argparse.ArgumentParser(description='Run inference on test set')
     
+    parser.add_argument('-mp','--model_path', type=str, 
+                        default='../models/model.pth', help='Path to save model')
+    
+    parser.add_argument('-d','--dataset', type=str, default='mnist',
+                        choices=['mnist','fashion_mnist'], 
+                        help='Dataset to use')
+    
+    parser.add_argument('-b', '--batch_size', type=int, default = 32,
+                        help='Mini-batch size')
+    
+    parser.add_argument('-nhl','--num_layes', type=int, default = 1,
+                        help='Number of hidden layers')
+    
+    parser.add_argument('-sz', '--hidden_size', type=list, default = [32],
+                        help='List with number of neurons in each hidden layer')
+    
+    parser.add_argument('-a', '--activation', type=str, default='sigmoid',
+                        choices=['sigmoid', 'tanh', 'relu'],
+                    help='Activation function to use in each hidden layer')
+
     return parser.parse_args()
 
 
