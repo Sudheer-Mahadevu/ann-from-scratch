@@ -4,6 +4,7 @@ Entry point for training neural networks with command-line arguments
 """
 
 import argparse
+from ann import NeuralNetwork
 
 def parse_arguments():
     """
@@ -49,7 +50,7 @@ def parse_arguments():
     parser.add_argument('-wd', '--weight_decay', type=float, default = 0,
                         help="Weight decay for L2 regularization")
 
-    parser.add_argument('-nhl','--num_layes', type=int, default = 1,
+    parser.add_argument('-nhl','--num_layers', type=int, default = 1,
                         help='Number of hidden layers')
 
     parser.add_argument('-sz', '--hidden_size', type=list, default = [32],
@@ -78,8 +79,9 @@ def main():
     Main training function.
     """
     args = parse_arguments()
-    
     print(args)
+
+    model = NeuralNetwork(args.num_layers, args.hidden_size)
     print("Training complete!")
 
 
