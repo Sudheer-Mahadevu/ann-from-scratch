@@ -5,6 +5,7 @@ Entry point for training neural networks with command-line arguments
 
 import argparse
 from ann import NeuralNetwork
+import numpy as np
 
 def parse_arguments():
     """
@@ -53,7 +54,8 @@ def parse_arguments():
     parser.add_argument('-nhl','--num_layers', type=int, default = 1,
                         help='Number of hidden layers')
 
-    parser.add_argument('-sz', '--hidden_size', type=list, default = [32],
+    parser.add_argument('-sz', '--hidden_size', type=int, 
+                        nargs='+', default = [32],
                         help='List with number of neurons in each hidden layer')
 
     parser.add_argument('-a', '--activation', type=str, default='sigmoid',
@@ -70,6 +72,8 @@ def parse_arguments():
     parser.add_argument('-mp','--model_path', type=str, 
                         default='../models/model.pth', help='Path to save model')
     
+    parser.add_argument('-v','--verbose',action='store_true',
+                        help='Print debugging information')
 
     return parser.parse_args()
 
@@ -80,8 +84,12 @@ def main():
     """
     args = parse_arguments()
     print(args)
-
-    model = NeuralNetwork(args.num_layers, args.hidden_size)
+    # check that hidden size list has len of num_layers
+    model = NeuralNetwork(args.hidden_size,args.weight_init,args.activation,
+                          args.loss, args.verbose)
+    X = np.array([[1,2]])
+    Z_o = model.forward(X)
+    print(Z_o)
     print("Training complete!")
 
 
