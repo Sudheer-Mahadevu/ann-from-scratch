@@ -13,7 +13,8 @@ class NeuaralLayer:
         in class 'adjusted for batch processing'.
         """
 
-    def __init__(self, batch_size, input_size, output_size , weight_init, activation_name):
+    def __init__(self, input_size, output_size , weight_init, activation_name,
+                 verbose = False):
 
         self.input_size = input_size
         self.output_size = output_size
@@ -31,10 +32,6 @@ class NeuaralLayer:
         This is called "batch-first" format as n is the starting dimension
         """
 
-        self.Z = np.zeros((batch_size,output_size))
-        self.A = np.zeros((batch_size,output_size))
-        self.activation_fn, self.activation_der = ACTIVATION_MAP[activation_name]
-
         if weight_init == 'xavier':
             std = np.sqrt(2/(input_size + output_size))
             self.W = np.random.normal(0,std, (input_size,output_size))
@@ -45,11 +42,26 @@ class NeuaralLayer:
         self.grad_W = None 
         self.grad_b = None
 
-        self.dZ_prev = None
-        ###### DOUBT: for evaluation should they be list of None or only None?
-        ###### CAREFUL: ensure that last batch_size is not given are bs param
+        self.Z = None
+        self.A = None
+        self.activation_fn, self.activation_der = ACTIVATION_MAP[activation_name]
 
-    def forward(self, A_prev):
+        # cache for backpropagation
+        self.A_prev = None
+        self.Z_prev = None
+
+        self.verbose = verbose
+        if self.verbose:
+            print(f"""Neural Layer created:
+                  number of neurons: {output_size},
+                  weight init: {weight_init},
+                  activation: {activation_name},
+                  """)
+            
+        ###### DOUBT: for evaluation should they be list of None or only None?
+        ###### TODO: For ReLU, HE initialization is recommended.
+
+    def forward(self, Z_prev ,A_prev):
         """
         Forward Propagation: Takes the activations from previous layer and
         updates the activations of this layer
@@ -58,9 +70,11 @@ class NeuaralLayer:
         self.Z = A_prev @ self.W + self.b
         self.A =  self.activation_fn(self.Z)
 
-        return self.A
+        self.Z_prev = Z_prev; self.A_prev = A_prev
+
+        return self.Z, self.A
     
-    def backward(self,A_prev,Z_prev,dZ):
+    def backward(self,dZ):
         """
         Backward Propagation: Implements the backpropagation equations
         Takes A_(l-1), Z_(l-1), delta_(l) (called as dZ) from previous layer
@@ -68,13 +82,13 @@ class NeuaralLayer:
         previous layer in back propagation
         """
 
-        n = A_prev.shape[0] # samples per batch
+        n = self.A_prev.shape[0] # samples per batch
 
         # Note that we are maintaining delta_l for each of the input in the batch
         # and summing it up when computing dW, db (This is the mini-batch GD!)
-        self.grad_W = (A_prev.T @ dZ)/n
+        self.grad_W = (self.A_prev.T @ dZ)/n
         self.grad_b = np.sum(dZ, axis = 0, keepdims=True)/n
 
-        self.dZ_next = (dZ @ self.W.T) * self.activation_der(Z_prev)
+        dZ_prev = (dZ @ self.W.T) * self.activation_der(self.Z_prev)
 
-        return self.grad_W, self.grad_b
+        return dZ_prev
