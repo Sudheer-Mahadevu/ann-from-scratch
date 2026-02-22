@@ -5,7 +5,8 @@ Handles forward and backward propagation loops
 
 from .neural_layer import NeuaralLayer
 from .activations import softmax
-from.objective_functions import LOSS_FUNCTIONS
+from .objective_functions import LOSS_FUNCTIONS
+from .optimizers import OPTIMIZERS
 
 class NeuralNetwork:
     """
@@ -13,7 +14,7 @@ class NeuralNetwork:
     """
     
     def __init__(self, hidden_size, weight_init, activation_name, 
-                 loss_func_name, verbose = False):
+                 loss_func_name, optimizer_name, verbose = False):
         """
         Initialize the neural network.
 
@@ -24,9 +25,7 @@ class NeuralNetwork:
 
         # Assume input has dimension 784 (28*28) and output has dimension 10
         self.input_size = 2  # d
-        self.output_size = 1  # k
-
-        self.loss_func, self.loss_delta = LOSS_FUNCTIONS[loss_func_name]
+        self.output_size = 2  # k
 
         prev_dim = self.input_size
         for h_size in hidden_size:
@@ -38,6 +37,8 @@ class NeuralNetwork:
         self.layers.append(NeuaralLayer(prev_dim,self.output_size, weight_init,
                                     activation_name='identity', verbose=verbose))
         
+        self.loss_func, self.loss_delta = LOSS_FUNCTIONS[loss_func_name]
+        self.optimizer = OPTIMIZERS[optimizer_name]
     
     def forward(self, X):
         """
@@ -77,22 +78,28 @@ class NeuralNetwork:
         """
 
         dZ = self.loss_delta(y_true, y_pred)
-        for layer in self.layers:
+        for layer in reversed(self.layers):
             dZ = layer.backward(dZ)
 
         #### DOUBT: should it return grads or neural layer is fine?
     
-    def update_weights(self):
+    def update_weights(self, learning_rate):
         """
         Update weights using the optimizer.
         """
-        pass
+        for layer in self.layers:
+            self.optimizer(layer,learning_rate)
+        
     
-    def train(self, X_train, y_train, epochs, batch_size):
+    def train(self, X_train, y_train, epochs, batch_size, learning_rate):
         """
         Train the network for specified epochs.
         """
-        pass
+        logits = self.forward(X_train)
+        y_pred = softmax(logits)
+        self.backward(y_train, y_pred)
+        
+        return
     
     def evaluate(self, X, y):
         """

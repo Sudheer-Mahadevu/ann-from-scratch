@@ -88,8 +88,9 @@ def main():
     model = NeuralNetwork(args.hidden_size,args.weight_init,args.activation,
                           args.loss, args.verbose)
     X = np.array([[1,2]])
-    Z_o = model.forward(X)
-    print(Z_o)
+    Y = np.array([[1,0]])
+    
+    model.train(X,Y,0,0)
     print("Training complete!")
 
 

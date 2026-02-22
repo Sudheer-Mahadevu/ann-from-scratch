@@ -92,3 +92,18 @@ class NeuaralLayer:
         dZ_prev = (dZ @ self.W.T) * self.activation_der(self.Z_prev)
 
         return dZ_prev
+
+    def zero_grad(self):
+        """
+        Sets gradients to None
+        """
+
+        """
+        This seems to be redundant as we are directly replacing grad_W, grad_b
+        with new values every mini-batch/ backprop iteration. But this will be
+        a useful method when gradient accumulation is used and it is recommened
+        to put it.
+        """
+
+        self.grad_W = None
+        self.grad_b = None
