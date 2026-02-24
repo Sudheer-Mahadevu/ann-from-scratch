@@ -5,10 +5,6 @@ Implements: SGD, Momentum, Adam, Nadam, etc.
 import numpy as np
 from functools import partial
 
-OPTIMIZERS = {
-
-}
-
 class Optimizer:
     def __init__(self, optimizer_name ,layers_list, lr, 
                  gamma = 0.9, beta=0.9, beta1 = 0.9, beta2 = 0.999):
