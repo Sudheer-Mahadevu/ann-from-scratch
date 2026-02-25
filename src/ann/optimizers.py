@@ -6,7 +6,7 @@ import numpy as np
 from functools import partial
 
 class Optimizer:
-    def __init__(self, optimizer_name ,layers_list, lr, 
+    def __init__(self, optimizer_name ,layers_list, lr=None, 
                  gamma = 0.9, beta=0.9, beta1 = 0.9, beta2 = 0.999):
 
         self.layers = layers_list

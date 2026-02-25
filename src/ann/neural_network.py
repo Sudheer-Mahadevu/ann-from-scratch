@@ -27,8 +27,8 @@ class NeuralNetwork:
         self.layers = []
 
         # Assume input has dimension 784 (28*28) and output has dimension 10
-        self.input_size = 2  # d
-        self.output_size = 2  # k
+        self.input_size = 784  # d
+        self.output_size = 10  # k
 
         prev_dim = self.input_size
         for h_size in hidden_size:
@@ -107,59 +107,62 @@ class NeuralNetwork:
 
 
 
-    def train_epoch(self, X, y, X_valid, y_valid, bs, optimizer, metric_names):
+    def train_epoch(self,dls,optimizer, metric_names):
         """
         Trains one epoch in mini-batches, validates and updates the training logs
         """
         
         # 1. Train
-        n = X.shape[0]
+        n = dls.x_train.shape[0]
         train_loss = 0
-        for b in range(0,n,bs):
-            batch_loss = self.train_minibatch(X[b:b+bs], y[b:b+bs], optimizer)
-            train_loss += y[b:b+bs].shape[0] * batch_loss
+        batches = dls.get_batches('train')
+        for x,y in batches:
+            batch_loss = self.train_minibatch(x, y, optimizer)
+            train_loss += y.shape[0] * batch_loss
             
             # update mini-batch wise train loss
-            self.recorder['raw_loss'].append(y[b:b+bs].shape[0] * batch_loss/bs)
+            self.recorder['raw_loss'].append(y.shape[0] * batch_loss/dls.bs)
+        train_loss /= n
         
         # 2. Validate
-        # TODO: If possible try to validate in batches
-        train_loss /= n
-        val_metrics = self.evaluate(X_valid, y_valid, metric_names)
+        val_metrics = self.evaluate_dls(dls, metric_names=metric_names)
 
         # 3. Update the training logs
-        self.recorder['train_loss'].append[train_loss]
+        self.recorder['train_loss'].append(train_loss)
         for name in val_metrics:
-            self.recorder[name].append[val_metrics[name]]
+            self.recorder[name].append(val_metrics[name])
 
         return
 
 
 
-    def train(self,X_train, y_train, X_valid, y_valid, batch_size, 
-              optimizer, epochs, learning_rate, metric_names):
+    def train(self,dls, optimizer, epochs, learning_rate, 
+              metric_names = ['accuracy','f1_macro']):
         """
         Train the network for specified epochs.
+
+        Args:
+        dls : MINSTLoader object
+        optimizer: Optimizer object
+        epochs: number of epochs
+        metric_names: train, valid loss are always logged. Other metircs:
+        'accuracy', 'f1_macro', 'precision', 'recall' 
         """
-        # TODO: better to create a dataloader that shuffles data, splits into
-        #  train, valid sets
 
         # set optimizer configuration
-        optimizer.layers = self.layers,
+        optimizer.layers = self.layers
         optimizer.lr = learning_rate
         
         # Train epochs
         self.init_recorder(metric_names)
         for e in range(epochs):
-            if(e%5 == 0):
-                print(f"Training Epoch {e} ...")
+            print(f"Training Epoch {e} ...")
                 
             start_time = time.perf_counter()
-            self.train_epoch(X_train, y_train,X_valid,y_valid,
-                             batch_size, optimizer, metric_names)
+            self.train_epoch(dls, optimizer, metric_names)
             end_time = time.perf_counter()
             duration = end_time-start_time
-            self.recorder['time'] = round(duration,2)
+            self.recorder['time'].append(round(duration,2))
         
         self.pretty_print_train()
 
@@ -167,9 +170,15 @@ class NeuralNetwork:
 
 
     
-    def evaluate(self, X, y, metrics = ['accuracy','f1_macro']):
+    def evaluate(self, X, y, metric_names):
         """
         Evaluate the network on given data.
+
+        Args:
+        X : (n,d) shaped data matrix
+        y : (n,k) shaped one-hot label matrix
+        metric names: list of metrics. 'accuracy', 'f1_macro', 'precision', 'recall' .
+        validation loss is always logged
         """
 
         logits = self.forward(X)
@@ -189,12 +198,52 @@ class NeuralNetwork:
         metrics = {}
         metrics['valid_loss'] = valid_loss
 
-        for m_name in metrics:
+        for m_name in metric_names:
             metrics[m_name] = METRICS_MAP[m_name](y_true_cls,y_pred_cls)
 
         return metrics
     
+    def evaluate_dls(self,dls, metric_names, type='valid'):
+        """
+        Evaluates the model in batches, given dls.
 
+        Args: 
+        dls: MNISTLoader object
+        metric_names: list of metrics. 'accuracy', 'f1_macro', 'precision',
+        'recall' key-words. validation loss is always logged
+        type: 'valid', 'test', 'train' key-words. The data in the dls to be evaluated
+        """
+
+        batches = dls.get_batches(type)
+
+        preds = np.array([]); targs =np.array([])
+        
+        for x,y in batches:
+            logits = self.forward(x)
+            y_pred = softmax(logits)
+            valid_loss = self.loss_func(y,y_pred)*y.shape[0]
+            y_pred_cls = np.argmax(y_pred,axis=1)
+            y_true_cls = np.argmax(y, axis=1)
+            preds = np.concatenate((preds,y_pred_cls))
+            targs = np.concatenate((targs,y_true_cls))
+            
+        valid_loss /= len(preds)
+
+        METRICS_MAP = {
+            'accuracy': accuracy_score,
+            'f1_macro' : partial(f1_score,average='macro'),
+            'precision': precision_score,
+            'recall' : recall_score
+        }
+
+        metrics = {}
+        metrics['valid_loss'] = valid_loss
+
+        for m_name in metric_names:
+            metrics[m_name] = METRICS_MAP[m_name](targs,preds)
+
+        return metrics
+    
 
     def zero_grad(self):
         """
@@ -217,6 +266,14 @@ class NeuralNetwork:
         for name in metric_names:
             self.recorder[name] = []
     
+    """
+    NOTE on recorder:
+    The following metrics are always logged:
+    train_loss, raw_loss, valid_loss, time
+    The following metrics can be logged if arguments are provided:
+    accuracy, f1_macro, precision, recall
+    They are to be given as metric_names arguments in the exact same way
+    """
 
 
     def pretty_print_train(self):
@@ -224,15 +281,16 @@ class NeuralNetwork:
         Prints the train logs at the end of training
         """
         print("\n" + "="*70)
-        print("TRAINIG LOG")
+        print(" "*27+"TRAINIG LOG")
         print("="*70)
         
         fields = ["train_loss", "valid_loss", "accuracy", "f1_macro", "time"]
         print(" Epochs | T-Loss | V-Loss |  Accu  |F1-Score| Time")
         epochs = len(self.recorder['train_loss'])
 
+        # print(self.recorder)
         for e in range(epochs):
             print(f"{e}"+" "*7, end="|")
             for f in fields:
-                print(f"{self.recorder[f]:.4f}  ", end="|")
+                print(f"{self.recorder[f][e]:.4f}  ", end="|")
             print("\n")

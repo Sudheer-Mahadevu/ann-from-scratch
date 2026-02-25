@@ -7,6 +7,7 @@ import argparse
 from ann import NeuralNetwork
 import numpy as np
 from utils import MNISTLoader
+from ann import Optimizer
 
 def parse_arguments():
     """
@@ -31,10 +32,10 @@ def parse_arguments():
                         choices=['mnist','fashion_mnist'], 
                         help='Dataset to use')
     
-    parser.add_argument('-e','--epochs', type=int, default= 5,
+    parser.add_argument('-e','--epochs', type=int, default= 15,
                              help = "Number of epochs to train")
     
-    parser.add_argument('-b', '--batch_size', type=int, default = 32,
+    parser.add_argument('-b', '--batch_size', type=int, default = 128,
                         help='Mini-batch size')
     
     parser.add_argument('-l', '--loss', type=str, default = 'cross_entropy',
@@ -56,14 +57,14 @@ def parse_arguments():
                         help='Number of hidden layers')
 
     parser.add_argument('-sz', '--hidden_size', type=int, 
-                        nargs='+', default = [32],
+                        nargs='+', default = [32, 32],
                         help='List with number of neurons in each hidden layer')
 
     parser.add_argument('-a', '--activation', type=str, default='sigmoid',
                         choices=['sigmoid', 'tanh', 'relu'],
                     help='Activation function to use in each hidden layer')
 
-    parser.add_argument('-w_i', '--weight_init', type=str, default='random',
+    parser.add_argument('-w_i', '--weight_init', type=str, default='xavier',
                         choices=['random', 'xavier'], 
                         help='Weight initialization method')
     
@@ -84,12 +85,15 @@ def main():
     Main training function.
     """
     args = parse_arguments()
-    print(args)
+    for key,value in vars(args).items():
+        print(f"{key} : {value}")
     
-    dls = MNISTLoader('fashion',0.2)
-    dls.show_data(15, n_rows=3)
-    
-
+    dls = MNISTLoader(args.dataset,val_split=0.2, batch_size=args.batch_size)
+    model = NeuralNetwork(args.hidden_size,args.weight_init,args.activation,
+                          args.loss)
+    optimizer = Optimizer(args.optimizer, model.layers)
+    model.train(dls,optimizer,args.epochs,args.learning_rate)
+    print("done")
 
 if __name__ == '__main__':
     main()

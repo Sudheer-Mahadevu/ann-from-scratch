@@ -10,10 +10,10 @@ import urllib.request
 import matplotlib.pyplot as plt
 
 class MNISTLoader:
-    def __init__(self, dataset='digits', val_split=0.1):
+    def __init__(self, dataset='mnist', val_split=0.1,batch_size=64, f=1):
 
         # Download the data
-        if dataset == 'digits':
+        if dataset == 'mnist':
             self.url_base = 'https://ossci-datasets.s3.amazonaws.com/mnist/'
         else:
             # This points to the official Fashion MNIST repository's raw data
@@ -36,6 +36,11 @@ class MNISTLoader:
         x_all = data['x_train'].reshape(-1, 784).astype('float32') / 255.0
         y_all = self._one_hot(data['y_train'],10)
         
+        # for running small scale training
+        use = int(f*len(x_all))
+        x_all = x_all[:use]
+        y_all = y_all[:use]
+
         # Shuffle the data before splitting
         idx = np.random.permutation(len(x_all))
         x_all, y_all = x_all[idx], y_all[idx]
@@ -48,7 +53,7 @@ class MNISTLoader:
         # Test Set
         self.x_test = data['x_test'].reshape(-1, 784).astype('float32') / 255.0
         self.y_test = self._one_hot(data['y_test'],10)
-    
+        self.bs = batch_size
 
 
     def _one_hot(self, labels, num_classes):
@@ -62,7 +67,7 @@ class MNISTLoader:
     def _load_file(self, filename):
         """Load file from zip to numpy array"""
 
-        # Create a subfolder for the specific dataset (e.g., 'data_digits/' or 'data_fashion/')
+        # Create a subfolder for the specific dataset (e.g., 'data_mnist/' or 'data_fashion/')
         target_dir = f"data_{self.dataset_type}"
         if not os.path.exists(target_dir):
             os.makedirs(target_dir)
@@ -89,10 +94,17 @@ class MNISTLoader:
             return np.frombuffer(f.read(), dtype=np.uint8, offset=offset)
 
 
-    def get_batches(self, x, y, batch_size, shuffle=True):
+    def get_batches(self,type, shuffle=True):
         """
         Generator that yields shuffled batches of data.
         """
+        DATA_SPILTS ={
+            'train': (self.x_train,self.y_train),
+            'valid': (self.x_val, self.y_val),
+            'test': (self.x_test,self.y_test),
+        }
+
+        x,y = DATA_SPILTS[type]
         n_samples = x.shape[0]
         indices = np.arange(n_samples)
 
@@ -101,8 +113,8 @@ class MNISTLoader:
         if shuffle:
             np.random.shuffle(indices)
 
-        for i in range(0, n_samples, batch_size):
-            batch_indices = indices[i : i + batch_size]
+        for i in range(0, n_samples, self.bs):
+            batch_indices = indices[i : i + self.bs]
             
             yield x[batch_indices], y[batch_indices]
         # Here yield acts as a generator. i.e it will not load all batches at 
@@ -128,7 +140,7 @@ class MNISTLoader:
             # 2. Convert one-hot label back to integer
             # np.argmax finds the index of the '1'
             label = np.argmax(labels[i])
-            if self.dataset_type != 'digits':
+            if self.dataset_type != 'mnist':
                 label = fashion_labels[label]
 
             plt.subplot(n_rows, int(num_images/n_rows), i + 1)
