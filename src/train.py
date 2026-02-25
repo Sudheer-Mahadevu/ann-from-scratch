@@ -6,6 +6,7 @@ Entry point for training neural networks with command-line arguments
 import argparse
 from ann import NeuralNetwork
 import numpy as np
+from utils import MNISTLoader
 
 def parse_arguments():
     """
@@ -84,14 +85,10 @@ def main():
     """
     args = parse_arguments()
     print(args)
-    # check that hidden size list has len of num_layers
-    model = NeuralNetwork(args.hidden_size,args.weight_init,args.activation,
-                          args.loss, args.verbose)
-    X = np.array([[1,2]])
-    Y = np.array([[1,0]])
     
-    model.train(X,Y,0,0)
-    print("Training complete!")
+    dls = MNISTLoader('fashion',0.2)
+    dls.show_data(15, n_rows=3)
+    
 
 
 if __name__ == '__main__':
