@@ -12,6 +12,7 @@ from functools import partial
 import numpy as np
 import time
 
+
 class NeuralNetwork:
     """
     Main model class that orchestrates the neural network training and inference.
@@ -21,9 +22,7 @@ class NeuralNetwork:
                  loss_func_name, verbose = False):
         """
         Initialize the neural network.
-
-        Args:
-            cli_args: Command-line arguments for configuring the network
+        With hidden and output layers and loss function
         """
         self.layers = []
 
@@ -44,6 +43,8 @@ class NeuralNetwork:
         self.loss_func, self.loss_delta = LOSS_FUNCTIONS[loss_func_name]
 
         self.recorder = {}
+
+
 
     def forward(self, X):
         """
@@ -70,6 +71,7 @@ class NeuralNetwork:
         return logits
 
 
+
     def backward(self, y_true, y_pred):
         """
         Backward propagation to compute gradients.
@@ -79,7 +81,7 @@ class NeuralNetwork:
             y_pred: Predicted outputs
             
         Returns:
-            return grad_w, grad_b
+            return (grad_w, grad_b) tuple for each of the layers
         """
 
         dZ = self.loss_delta(y_true, y_pred)
@@ -87,10 +89,13 @@ class NeuralNetwork:
             dZ = layer.backward(dZ)
 
         #### DOUBT: should it return grads or neural layer is fine?
-        
+        #### TODO: assemble all grads in a list
+
     
     def train_minibatch(self, X, y, optimizer):
-
+        """
+        Trains mini-batch of X,y and return the train loss for the batch
+        """
         logits = self.forward(X)
         y_pred = softmax(logits)
         loss = self.loss_func(y,y_pred)
@@ -101,19 +106,28 @@ class NeuralNetwork:
         return loss
 
 
+
     def train_epoch(self, X, y, X_valid, y_valid, bs, optimizer, metric_names):
+        """
+        Trains one epoch in mini-batches, validates and updates the training logs
+        """
+        
+        # 1. Train
         n = X.shape[0]
         train_loss = 0
         for b in range(0,n,bs):
             batch_loss = self.train_minibatch(X[b:b+bs], y[b:b+bs], optimizer)
             train_loss += y[b:b+bs].shape[0] * batch_loss
             
+            # update mini-batch wise train loss
             self.recorder['raw_loss'].append(y[b:b+bs].shape[0] * batch_loss/bs)
         
+        # 2. Validate
         # TODO: If possible try to validate in batches
         train_loss /= n
         val_metrics = self.evaluate(X_valid, y_valid, metric_names)
 
+        # 3. Update the training logs
         self.recorder['train_loss'].append[train_loss]
         for name in val_metrics:
             self.recorder[name].append[val_metrics[name]]
@@ -121,17 +135,20 @@ class NeuralNetwork:
         return
 
 
+
     def train(self,X_train, y_train, X_valid, y_valid, batch_size, 
               optimizer, epochs, learning_rate, metric_names):
         """
         Train the network for specified epochs.
         """
-        # better to create a dataloader that shuffles data, splits into
+        # TODO: better to create a dataloader that shuffles data, splits into
         #  train, valid sets
 
+        # set optimizer configuration
         optimizer.layers = self.layers,
         optimizer.lr = learning_rate
         
+        # Train epochs
         self.init_recorder(metric_names)
         for e in range(epochs):
             if(e%5 == 0):
@@ -145,8 +162,10 @@ class NeuralNetwork:
             self.recorder['time'] = round(duration,2)
         
         self.pretty_print_train()
+
         return self.recorder
-    
+
+
     
     def evaluate(self, X, y, metrics = ['accuracy','f1_macro']):
         """
@@ -175,15 +194,21 @@ class NeuralNetwork:
 
         return metrics
     
-    
-    def zero_grad(self):
 
+
+    def zero_grad(self):
+        """
+        Sets the gradients of all layers to zero
+        """
         for layer in self.layers:
             layer.zero_grad()
     
 
-    def init_recorder(self, metric_names):
 
+    def init_recorder(self, metric_names):
+        """
+        Initialize the train logs recorder
+        """
         self.recorder['train_loss'] = []
         self.recorder['valid_loss'] = []
         self.recorder['time'] = []
@@ -193,8 +218,11 @@ class NeuralNetwork:
             self.recorder[name] = []
     
 
+
     def pretty_print_train(self):
-        
+        """
+        Prints the train logs at the end of training
+        """
         print("\n" + "="*70)
         print("TRAINIG LOG")
         print("="*70)
