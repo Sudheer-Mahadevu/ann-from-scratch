@@ -6,7 +6,6 @@ Handles forward and backward propagation loops
 from .neural_layer import NeuaralLayer
 from .activations import softmax
 from .objective_functions import LOSS_FUNCTIONS
-from .optimizers import Optimizer
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from functools import partial
 import numpy as np
@@ -113,7 +112,6 @@ class NeuralNetwork:
         """
         
         # 1. Train
-        n = dls.x_train.shape[0]
         train_loss = 0
         batches = dls.get_batches('train')
         for x,y in batches:
@@ -122,7 +120,7 @@ class NeuralNetwork:
             
             # update mini-batch wise train loss
             self.recorder['raw_loss'].append(y.shape[0] * batch_loss/dls.bs)
-        train_loss /= n
+        train_loss /= dls.x_train.shape[0]
         
         # 2. Validate
         val_metrics = self.evaluate_dls(dls, metric_names=metric_names)
@@ -218,15 +216,16 @@ class NeuralNetwork:
 
         preds = np.array([]); targs =np.array([])
         
+        valid_loss = 0
         for x,y in batches:
             logits = self.forward(x)
             y_pred = softmax(logits)
-            valid_loss = self.loss_func(y,y_pred)*y.shape[0]
+            valid_loss += self.loss_func(y,y_pred)*y.shape[0]
             y_pred_cls = np.argmax(y_pred,axis=1)
             y_true_cls = np.argmax(y, axis=1)
             preds = np.concatenate((preds,y_pred_cls))
             targs = np.concatenate((targs,y_true_cls))
-            
+        
         valid_loss /= len(preds)
 
         METRICS_MAP = {

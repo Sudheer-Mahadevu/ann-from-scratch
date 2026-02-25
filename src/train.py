@@ -8,6 +8,10 @@ from ann import NeuralNetwork
 import numpy as np
 from utils import MNISTLoader
 from ann import Optimizer
+from types import SimpleNamespace
+import wandb
+from api_keys import WANDB_API_KEY, WANDB_ENTITY
+from utils import train_with_wandb_sweep, sweep_config
 
 def parse_arguments():
     """
@@ -32,7 +36,7 @@ def parse_arguments():
                         choices=['mnist','fashion_mnist'], 
                         help='Dataset to use')
     
-    parser.add_argument('-e','--epochs', type=int, default= 15,
+    parser.add_argument('-e','--epochs', type=int, default= 5,
                              help = "Number of epochs to train")
     
     parser.add_argument('-b', '--batch_size', type=int, default = 128,
@@ -57,7 +61,7 @@ def parse_arguments():
                         help='Number of hidden layers')
 
     parser.add_argument('-sz', '--hidden_size', type=int, 
-                        nargs='+', default = [32, 32],
+                        nargs='+', default = [128, 128, 128],
                         help='List with number of neurons in each hidden layer')
 
     parser.add_argument('-a', '--activation', type=str, default='sigmoid',
@@ -84,16 +88,25 @@ def main():
     """
     Main training function.
     """
-    args = parse_arguments()
-    for key,value in vars(args).items():
-        print(f"{key} : {value}")
+    wandb.login(key = WANDB_API_KEY)
+    sweep_id = wandb.sweep(sweep_config, entity=WANDB_ENTITY, 
+                           project="da6401-assignment1")
+    
+    wandb.agent(sweep_id, function=train_with_wandb_sweep, count=2)
+
+def train_model(args):
     
     dls = MNISTLoader(args.dataset,val_split=0.2, batch_size=args.batch_size)
     model = NeuralNetwork(args.hidden_size,args.weight_init,args.activation,
                           args.loss)
     optimizer = Optimizer(args.optimizer, model.layers)
     model.train(dls,optimizer,args.epochs,args.learning_rate)
-    print("done")
+    return
+
+
+
+
+
 
 if __name__ == '__main__':
     main()

@@ -2,3 +2,5 @@ __pycache__
 .vscode
 /data_*
 optimiser_testing.py
+api_keys.py
+/wandb
