@@ -48,7 +48,7 @@ class NeuralNetwork:
         self.optimizer = cli_args.optimizer
         self.lr = cli_args.learning_rate
         self.grad_W = [None]*(len(hidden_size)+1); self.grad_b = [None]*(len(hidden_size)+1)
-
+        self.bs = cli_args
         self.recorder = {}
 
 
@@ -95,10 +95,10 @@ class NeuralNetwork:
         for layer in reversed(self.layers):
             dZ = layer.backward(dZ)
 
-        for i,layer in enumerate(reversed(self.layers)):
+        for i,layer in enumerate(self.layers):
             self.grad_W[i] = layer.grad_W; self.grad_b[i] = layer.grad_b
 
-        return (self.grad_W, self.grad_b)
+        return (self.grad_W, self.grad_b)   
     
     def get_weights(self):
         d = {}
