@@ -13,6 +13,10 @@ This assignment requires you to implement a neural network from scratch using on
 - Train and evaluate neural networks
 - Log experiments using Weights & Biases
 
+## Links
+Github repository : [Link](https://github.com/Sudheer-Mahadevu/ann-from-scratch)
+W & B Report : [Link](https://api.wandb.ai/links/me21b102-assign1/pqn611qh)
+
 ## Contact
 
 For questions or issues, please contact the teaching staff or post on the course forum.
