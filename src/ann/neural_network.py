@@ -10,6 +10,7 @@ from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_sc
 from functools import partial
 import numpy as np
 import time
+from .optimizers import Optimizer
 
 
 class NeuralNetwork:
@@ -17,13 +18,17 @@ class NeuralNetwork:
     Main model class that orchestrates the neural network training and inference.
     """
     
-    def __init__(self, hidden_size, weight_init, activation_name, 
-                 loss_func_name, verbose = False):
+    def __init__(self, cli_args, verbose = False):
         """
         Initialize the neural network.
         With hidden and output layers and loss function
         """
         self.layers = []
+        
+        hidden_size = cli_args.hidden_size
+        weight_init = cli_args.weight_init
+        activation_name = cli_args.activation
+        loss_func_name = cli_args.loss
 
         # Assume input has dimension 784 (28*28) and output has dimension 10
         self.input_size = 784  # d
@@ -40,6 +45,9 @@ class NeuralNetwork:
                                     activation_name='identity', verbose=verbose))
         
         self.loss_func, self.loss_delta = LOSS_FUNCTIONS[loss_func_name]
+        self.optimizer = cli_args.optimizer
+        self.lr = cli_args.learning_rate
+        self.grad_W = [None]*(len(hidden_size)+1); self.grad_b = [None]*(len(hidden_size)+1)
 
         self.recorder = {}
 
@@ -87,9 +95,52 @@ class NeuralNetwork:
         for layer in reversed(self.layers):
             dZ = layer.backward(dZ)
 
-        #### DOUBT: should it return grads or neural layer is fine?
-        #### TODO: assemble all grads in a list
+        for i,layer in enumerate(reversed(self.layers)):
+            self.grad_W[i] = layer.grad_W; self.grad_b[i] = layer.grad_b
 
+        return (self.grad_W, self.grad_b)
+    
+    def get_weights(self):
+        d = {}
+        for i, layer in enumerate(self.layers):
+            d[f"W{i}"] = layer.W.copy()
+            d[f"b{i}"] = layer.b.copy()
+        return d
+    
+
+    def set_weights(self, weight_dict):
+        for i, layer in enumerate(self.layers):
+            w_key = f"W{i}"
+            b_key = f"b{i}"
+            if w_key in weight_dict:
+                layer.W = weight_dict[w_key].copy()
+            if b_key in weight_dict:
+                layer.b = weight_dict[b_key].copy()
+
+
+    def train(self, X_train, y_train, epochs=10, batch_size = 64):
+        """This function is added only for evaluation, actual set of 
+        functions are train_custom ->train_epoch -> train_minibatch. They offer
+        tracking the metrics, evaluation on validation set, pretty print, etc.
+        See main branch code to remove submission clutter.
+        """
+        n_samples = X_train.shape[0]
+        if(len(y_train.shape) == 1):
+            y_train = np.eye(10)[y_train] # convert to one-hot encoded vectors
+        indices = np.arange(n_samples)
+        optimizer = Optimizer(self.optimizer, self.layers)
+        optimizer.lr = self.lr
+
+        for e in range(epochs):
+            np.random.shuffle(indices)
+            for i in range(0,n_samples,batch_size):
+                batch_indices = indices[i:i+batch_size]
+                self.train_minibatch(X_train[batch_indices], 
+                                     y_train[batch_indices], optimizer)
+
+
+        return
+    
     
     def train_minibatch(self, X, y, optimizer):
         """
@@ -134,7 +185,7 @@ class NeuralNetwork:
 
 
 
-    def train(self,dls, optimizer, epochs, learning_rate, 
+    def train_custom(self,dls, optimizer, epochs, learning_rate, 
               metric_names = ['accuracy','f1_macro']):
         """
         Train the network for specified epochs.
@@ -169,7 +220,7 @@ class NeuralNetwork:
 
 
     
-    def evaluate(self, X, y, metric_names):
+    def evaluate(self, X, y, metric_names=[]):
         """
         Evaluate the network on given data.
 
@@ -179,6 +230,10 @@ class NeuralNetwork:
         metric names: list of metrics. 'accuracy', 'f1_macro', 'precision', 'recall' .
         validation loss is always logged
         """
+
+        if(len(y.shape) == 1):
+            y = np.eye(10)[y] # convert to one-hot encoded vectors
+
 
         logits = self.forward(X)
         y_pred = softmax(logits)
@@ -190,8 +245,8 @@ class NeuralNetwork:
         METRICS_MAP = {
             'accuracy': accuracy_score,
             'f1_macro' : partial(f1_score,average='macro'),
-            'precision': precision_score,
-            'recall' : recall_score
+            'precision': partial(precision_score, average = 'macro'),
+            'recall' : partial(recall_score, average = 'macro'),
         }
 
         metrics = {}
