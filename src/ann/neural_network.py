@@ -153,8 +153,9 @@ class NeuralNetwork:
         
         # Train epochs
         self.init_recorder(metric_names)
+        print("Training Epochs ... ", end="")
         for e in range(epochs):
-            print(f"Training Epoch {e} ...")
+            print(f"{e}", end=" ", flush=True)
                 
             start_time = time.perf_counter()
             self.train_epoch(dls, optimizer, metric_names)
@@ -279,7 +280,7 @@ class NeuralNetwork:
         """
         Prints the train logs at the end of training
         """
-        print("\n" + "="*70)
+        print("\n"+"="*70)
         print(" "*27+"TRAINIG LOG")
         print("="*70)
         
@@ -289,7 +290,7 @@ class NeuralNetwork:
 
         # print(self.recorder)
         for e in range(epochs):
-            print(f"{e}"+" "*7, end="|")
+            print(f"\n{e}"+" "*7, end="|")
             for f in fields:
                 print(f"{self.recorder[f][e]:.4f}  ", end="|")
-            print("\n")
+        print("\n")

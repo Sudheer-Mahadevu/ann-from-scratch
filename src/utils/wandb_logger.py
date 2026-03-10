@@ -62,4 +62,9 @@ def train_with_wandb_sweep():
         run.summary["best_val_accuracy"] = max(logs['accuracy'])
         run.summary["best_f1_score"] = max(logs["f1_macro"])
 
+        arch_label = "-".join(map(str, config.hidden_size))
+        run.summary["arch-string"] = arch_label,
+        run.summary["arch-depth"] = len(config.hidden_size)
+        run.summary["num_neurons"] = sum(config.hidden_size)
+
     return

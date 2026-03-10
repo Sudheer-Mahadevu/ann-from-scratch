@@ -5,6 +5,9 @@ Implements: ReLU, Sigmoid, Tanh, Softmax
 import numpy as np
 
 def sigmoid(Z):
+    Z = np.clip(Z, -709, 709)
+    if(np.any(Z > 709) or np.any(Z < -709)):
+        print("overflow occurred")
     return 1/(1+np.exp(-Z))
 
 def sigmoid_derivative(Z):
@@ -29,7 +32,8 @@ def identity(Z): return Z
 def identity_derivative(Z): return np.ones(Z.shape)
 
 def softmax(Z):
-    exp_Z = np.exp(Z)
+    c = np.max(Z, axis=1, keepdims=True)
+    exp_Z = np.exp(Z-c) # To prevent overflow
     y_cap = exp_Z/ np.sum(exp_Z, axis=1, keepdims=True)
     return y_cap
 

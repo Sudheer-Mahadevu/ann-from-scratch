@@ -80,6 +80,9 @@ def parse_arguments():
     
     parser.add_argument('-v','--verbose',action='store_true',
                         help='Print debugging information')
+    
+    parser.add_argument('-r', '--runs', type=int, default=1, 
+                        help="number of hyper parameter sweep runs")
 
     return parser.parse_args()
 
@@ -88,17 +91,43 @@ def main():
     """
     Main training function.
     """
+    args = parse_arguments()
+    # for k,v in vars(args).items():
+    #     print(f"{k}: {v}")
+    # train_model(args)
+
     wandb.login(key = WANDB_API_KEY)
-    sweep_id = wandb.sweep(sweep_config, entity=WANDB_ENTITY, 
+    # For a single sweep to be done in batches, generate sweep_id once, store it
+    # comment the below line and use it as may times as we want to continue 
+    # running the sweep. This ensures same params are not taken again.
+    
+    optimizer_sweep = {
+        'method' : 'grid',
+        'parameters': {
+            'weight_init': {'value':'xavier' },
+            'batch_size': {'value': 64},
+            'learning_rate': {'value': 0.003},
+            'hidden_size': {'value': [128,128,128]},
+            'activation' : {'value': 'relu'},
+            'optimizer': {'value': 'nadam'},
+            'loss': {'values': ['cross_entropy', 'mean_squared_error']},
+            'epochs': {'value': 5},
+            'question_no': {'value': 6},
+        }
+    }
+
+    sweep_id = wandb.sweep(optimizer_sweep, entity=WANDB_ENTITY, 
                            project="da6401-assignment1")
     
-    wandb.agent(sweep_id, function=train_with_wandb_sweep, count=2)
+    # print(f"running {args.runs} times")
+    wandb.agent(sweep_id, function=train_with_wandb_sweep)
+
 
 def train_model(args):
     
     dls = MNISTLoader(args.dataset,val_split=0.2, batch_size=args.batch_size)
     model = NeuralNetwork(args.hidden_size,args.weight_init,args.activation,
-                          args.loss)
+                          args.loss, args.verbose)
     optimizer = Optimizer(args.optimizer, model.layers)
     model.train(dls,optimizer,args.epochs,args.learning_rate)
     return
